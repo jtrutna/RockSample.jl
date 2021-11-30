@@ -24,22 +24,21 @@ export
 const RSPos = SVector{2, Int}
 
 """
-    RSState{K}
+    RSState
 Represents the state in a RockSamplePOMDP problem. 
-`K` is an integer representing the number of rocks
 
 # Fields
 - `pos::RPos` position of the robot
 - `rocks::SVector{K, Bool}` the status of the rocks (false=bad, true=good)
 """
-struct RSState{K}
+struct RSState
     pos::RSPos 
-    rocks::SVector{K, Bool}
+    rocks::SVector{4, Bool}
 end
 
-@with_kw struct RockSamplePOMDP{K} <: POMDP{RSState{K}, Int, Int}
+@with_kw struct RockSamplePOMDP <: POMDP{RSState, Int, Int}
     map_size::Tuple{Int, Int} = (5,5)
-    rocks_positions::SVector{K,RSPos} = @SVector([(1,1), (3,3), (4,4)])
+    rocks_positions::SVector{K,RSPos} = @SVector([(1,1), (1,5), (5, 1), (5,5)])
     init_pos::RSPos = (1,1)
     sensor_efficiency::Float64 = 10.0
     bad_rock_penalty::Float64 = -10
@@ -53,34 +52,9 @@ end
 end
 
 # to handle the case where rocks_positions is not a StaticArray
-function RockSamplePOMDP(map_size,
-                         rocks_positions,
-                         args...
-                        )
-
-    k = length(rocks_positions)
-    return RockSamplePOMDP{k}(map_size,
-                              SVector{k,RSPos}(rocks_positions),
-                              args...
-                             )
+function RockSamplePOMDP(args...)
+    return RockSamplePOMDP{k}(args...)
 end
-
-# Generate a random instance of RockSample(n,m) with a n×n square map and m rocks
-RockSamplePOMDP(map_size::Int, rocknum::Int, rng::AbstractRNG=Random.GLOBAL_RNG) = RockSamplePOMDP((map_size,map_size), rocknum, rng)
-
-# Generate a random instance of RockSample with a n×m map and l rocks
-function RockSamplePOMDP(map_size::Tuple{Int, Int}, rocknum::Int, rng::AbstractRNG=Random.GLOBAL_RNG)
-    possible_ps = [(i, j) for i in 1:map_size[1], j in 1:map_size[2]]
-    selected = unique(rand(rng, possible_ps, rocknum))
-    while length(selected) != rocknum
-        push!(selected, rand(rng, possible_ps))
-        selected = unique!(selected)
-    end
-    return RockSamplePOMDP(map_size=map_size, rocks_positions=selected)
-end
-
-# To handle the case where the `rocks_positions` is specified
-RockSamplePOMDP(map_size::Tuple{Int, Int}, rocks_positions::AbstractVector) = RockSamplePOMDP(map_size=map_size, rocks_positions=rocks_positions)
 
 POMDPs.isterminal(pomdp::RockSamplePOMDP, s::RSState) = s.pos == pomdp.terminal_state.pos 
 POMDPs.discount(pomdp::RockSamplePOMDP) = pomdp.discount_factor
